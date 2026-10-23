@@ -1,0 +1,4 @@
+data-src/.venv/
+data-src/models/
+data-src/*.json
+.DS_Store
