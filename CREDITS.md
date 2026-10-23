@@ -121,3 +121,19 @@
 | Хора на Луната | [Aldrin Apollo 11 original.jpg](https://commons.wikimedia.org/wiki/File:Aldrin_Apollo_11_original.jpg) | Neil Armstrong | Public domain |
 | Първата снимка на черна дупка | [Black hole - Messier 87 crop max res.jpg](https://commons.wikimedia.org/wiki/File:Black_hole_-_Messier_87_crop_max_res.jpg) | Event Horizon Telescope | CC BY 4.0 |
 | Телескопът Джеймс Уеб | [James Webb Primary Mirror.jpg](https://commons.wikimedia.org/wiki/File:James_Webb_Primary_Mirror.jpg) | NASA/MSFC/David Higginbotham | Public domain |
+| Първите погребения с дарове | [Eingang der Qafzeh-Höhle.jpg](https://commons.wikimedia.org/wiki/File:Eingang_der_Qafzeh-H%C3%B6hle.jpg) | LS | CC BY-SA 4.0 |
+| Юдаизмът | [Two Torah scrolls.jpg](https://commons.wikimedia.org/wiki/File:Two_Torah_scrolls.jpg) | Davidbena | CC BY-SA 4.0 |
+| Голямото наводнение | [Tablet XI or the Flood Tablet of the Epic of Gilgamesh, currently housed in the British Museum in London.jpg](https://commons.wikimedia.org/wiki/File:Tablet_XI_or_the_Flood_Tablet_of_the_Epic_of_Gilgamesh%2C_currently_housed_in_the_British_Museum_in_London.jpg) | Osama Shukir Muhammed Amin | CC BY-SA 4.0 |
+| Индуизмът | [Rigveda MS2097.jpg](https://commons.wikimedia.org/wiki/File:Rigveda_MS2097.jpg) | Unknown author | Public domain |
+| Зороастризмът | [Zoroastrian Fire Temple, Yazd 01.jpg](https://commons.wikimedia.org/wiki/File:Zoroastrian_Fire_Temple%2C_Yazd_01.jpg) | Bernard Gagnon | CC BY-SA 4.0 |
+| Будизмът | [Mahabodhitemple.jpg](https://commons.wikimedia.org/wiki/File:Mahabodhitemple.jpg) | Bpilgrim | CC BY-SA 2.5 |
+| Християнството | [Jerusalem Holy Sepulchre BW 19.JPG](https://commons.wikimedia.org/wiki/File:Jerusalem_Holy_Sepulchre_BW_19.JPG) | Berthold Werner | CC BY-SA 3.0 |
+| Ислямът | [The Kaaba during Hajj - edited.jpg](https://commons.wikimedia.org/wiki/File:The_Kaaba_during_Hajj_-_edited.jpg) | Adli Wahid; edited by Basile Morin | CC BY-SA 4.0 |
+| Покръстването на България | [Baptism of the Preslav Court.jpg](https://commons.wikimedia.org/wiki/File:Baptism_of_the_Preslav_Court.jpg) | Nikolai Pavlovich | Public domain |
+| Голямата схизма | [Hagia Sophia Mars 2013.jpg](https://commons.wikimedia.org/wiki/File:Hagia_Sophia_Mars_2013.jpg) | Arild Vågen | CC BY-SA 3.0 |
+| Сикхизмът | [Hamandir Sahib (Golden Temple).jpg](https://commons.wikimedia.org/wiki/File:Hamandir_Sahib_%28Golden_Temple%29.jpg) | Oleg Yunakov | CC BY-SA 3.0 |
+| Реформацията | [Lucas Cranach d.Ä. - Martin Luther, 1528 (Veste Coburg).jpg](https://commons.wikimedia.org/wiki/File:Lucas_Cranach_d.%C3%84._-_Martin_Luther%2C_1528_%28Veste_Coburg%29.jpg) | Lucas Cranach the Elder | Public domain |
+| Листрозавър | [Lystrosaurus georgi mounted skeleton.jpg](https://commons.wikimedia.org/wiki/File:Lystrosaurus_georgi_mounted_skeleton.jpg) | Jon Augier / Museums Victoria | CC BY 4.0 |
+| Целофиза | [Coelophysis bauri mount.jpg](https://commons.wikimedia.org/wiki/File:Coelophysis_bauri_mount.jpg) | James St. John | CC BY 2.0 |
+| Птеранодон | [Pteranodon longiceps skeleton.jpg](https://commons.wikimedia.org/wiki/File:Pteranodon_longiceps_skeleton.jpg) | Mira Mechtley | CC BY-SA 2.0 |
+| Додо | [Dodo-Skeleton Natural History Museum London England.jpg](https://commons.wikimedia.org/wiki/File:Dodo-Skeleton_Natural_History_Museum_London_England.jpg) | Heinz-Josef Lücking | CC BY-SA 2.5 |

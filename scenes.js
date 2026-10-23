@@ -303,7 +303,8 @@ const Scenes = (() => {
       const wIn = r.first ? 1 : smooth(r.a - f, r.a, view.u), wOut = r.last ? 1 : 1 - smooth(r.b - fo, r.b, view.u);
       const w = wIn * wOut;
       if (w <= 0) continue;
-      const p = clamp((view.u - r.a) / (r.b - r.a), 0, 1);
+      // among the first moments progress follows the powers of ten
+      const p = r.la != null ? clamp((Math.log10(Math.max(view.u, 1e-62)) - r.la) / (r.lb - r.la), 0, 1) : clamp((view.u - r.a) / (r.b - r.a), 0, 1);
       ctx.save(); ctx.globalAlpha = drew ? w : 1; // the first scene paints the ground, the next one fades in over it
       if (r.name === "globe") extra.globe(ctx, W, H, view);
       else DRAW[r.name](ctx, W, H, p, view);

@@ -73,15 +73,12 @@ const Globe = (() => {
   }
 
   /* ---------- drawing ---------- */
-  // one projection that morphs from a globe (t = 0) into a flat world map (t = 1)
-  const ORTHO = d3.geoOrthographicRaw, FLAT = d3.geoNaturalEarth1Raw;
-  const mutate = d3.geoProjectionMutator((t) => (x, y) => { const a = ORTHO(x, y), b = FLAT(x, y); return [lerp(a[0], b[0], t), lerp(a[1], b[1], t)]; });
-  const projection = mutate(0).precision(.6);
-  const path = d3.geoPath(projection);
+  // two separate projections; around a billion years ago the globe fades out and the flat map fades in
+  const globeProj = d3.geoOrthographic().clipAngle(90).precision(.6);
+  const mapProj = d3.geoNaturalEarth1().precision(.6);
   const grat = d3.geoGraticule10(), SPHERE = { type: "Sphere" };
   const FLAT_W = 2 * 2.7, FLAT_H = 2 * 1.42;                 // size of the Natural Earth map at scale 1
-  // the globe opens into a map when the plate model has real continents (about a billion years ago)
-  const mapness = (ago) => smooth(1.15e9, .95e9, ago);
+  const mapness = (ago) => smooth(1.2e9, 1.02e9, ago);     // the plate model has real continents from about a billion years ago
   let rot = [-20, -15], lastT = 0;
 
   /* ---------- who lived where (life.js + life-paths.js) ---------- */
@@ -97,7 +94,7 @@ const Globe = (() => {
     }
     const z = path[path.length - 1]; return [z[1], z[2]];
   }
-  function drawLife(ctx, view, t, center) {
+  function drawLife(ctx, view, proj, globe, center) {
     if (typeof LIFE === "undefined" || typeof LIFE_PATHS === "undefined") return 0;
     const ago = view.ago, ma = ago / 1e6, R = clamp(Math.min(view.stage.w, view.stage.h) / 44, 11, 17), boxes = [];
     let shown = 0;
@@ -110,8 +107,8 @@ const Globe = (() => {
         const end = site[2] != null ? site[2] : c.to;
         if (ago < end || !paths[k]) return;
         const ll = lifeAt(paths[k], ma);
-        if (t < .5 && d3.geoDistance(ll, center) > Math.PI / 2 - .08) return;
-        const p = projection(ll); if (!p) return;
+        if (globe && d3.geoDistance(ll, center) > Math.PI / 2 - .08) return;
+        const p = proj(ll); if (!p) return;
         // fade in when the animal appears and out when it disappears (on the log clock)
         const fade = clamp(Math.min(Math.log10(c.from / Math.max(ago, 1)), end > 0 ? Math.log10(ago / end) : 9) * 10, 0, 1);
         if (fade <= .02) return;
@@ -138,81 +135,117 @@ const Globe = (() => {
     return shown;
   }
 
-  function draw(ctx, W, H, view) {
-    const ago = view.ago, ma = ago / 1e6, L = look(ago);
-    const st = view.stage, cx = st.x + st.w / 2; let cy = st.y + st.h / 2;
-    const dt = Math.min(.1, view.t - lastT || 0); lastT = view.t;
-    const t = mapness(ago), R = Math.min(st.w, st.h) * .44;
-    // the wide map sits below the date and era chips in the top-left corner
-    const top = Math.max(st.y, (document.getElementById("eras")?.getBoundingClientRect().bottom || 0) + 12), mh = st.y + st.h - top;
-    const M = Math.min((st.w - 16) / FLAT_W, mh / FLAT_H) * .97;
-    const cyMap = top + mh / 2; cy = lerp(cy, cyMap, t);
+  // an ice cap with a wavy edge, r degrees from the pole (pole = 1 north, -1 south)
+  const capCache = new Map();
+  function icecap(pole, r) {
+    const key = pole + ":" + Math.round(r);
+    if (capCache.has(key)) return capCache.get(key);
+    const ring = [];
+    for (let lon = -180; lon <= 180; lon += 4) { const wave = 3 * Math.sin(lon * Math.PI / 60) + 2 * Math.sin(lon * Math.PI / 25 + 1); ring.push([lon, pole * (90 - Math.max(2, r + wave))]); }
+    ring.push(ring[0]);
+    let g = { type: "Polygon", coordinates: [ring] };
+    if (d3.geoArea(g) > TAU) g = { type: "Polygon", coordinates: [ring.slice().reverse()] };
+    capCache.set(key, g); return g;
+  }
 
-    // the globe turns toward the place of the current event, or spins slowly; the map stays put
-    const at = view.focusAt;
-    if (at) { const tl = -at[0], tp = clamp(-at[1], -50, 50); let d = ((tl - rot[0] + 540) % 360) - 180; rot[0] += d * Math.min(1, dt * 2.2); rot[1] += (tp - rot[1]) * Math.min(1, dt * 2.2); }
-    else { rot[0] += dt * 8 * (1 - t); rot[1] += (-15 - rot[1]) * Math.min(1, dt); }
-    const lam = ((rot[0] + 540) % 360) - 180;
-    mutate(t);
-    projection.translate([cx, cy]).scale(lerp(R, M, t)).rotate([lam * (1 - t), rot[1] * (1 - t)]).clipAngle(t < .001 ? 90 : t > .97 ? null : Math.min(170, 90 + t * 90)); // a full map cuts at the date line instead
-
-    ctx.fillStyle = "#02030a"; ctx.fillRect(0, 0, W, H);
-    Scenes.starfield(ctx, W, H, view.t, .8);
-    if (t < 1) { ctx.save(); ctx.globalAlpha = 1 - t; Scenes.glow(ctx, cx, cy, R * 1.25, L.air.replace("rgb", "rgba").replace(")", ",.45)")); ctx.restore(); }
-
-    // ocean
-    const og = ctx.createRadialGradient(cx - R * .35, cy - R * .35, R * .1, cx, cy, lerp(R, M * 2.7, t));
+  // one picture of the planet with a given projection: ocean, land, ice, grid, life, the event pin
+  function paint(ctx, W, H, view, proj, globe, L, at, center) {
+    const path = d3.geoPath(proj, ctx), ago = view.ago, ma = ago / 1e6;
+    const [cx, cy] = proj.translate(), S = proj.scale();
+    const og = globe ? ctx.createRadialGradient(cx - S * .35, cy - S * .35, S * .1, cx, cy, S) : ctx.createLinearGradient(0, cy - S * 1.4, 0, cy + S * 1.4);
     og.addColorStop(0, L.ocean); og.addColorStop(1, L.deep);
-    ctx.beginPath(); path.context(ctx)(SPHERE); ctx.fillStyle = og; ctx.fill();
-
-    ctx.save(); ctx.beginPath(); path.context(ctx)(SPHERE); ctx.clip();
+    ctx.beginPath(); path(SPHERE); ctx.fillStyle = og; ctx.fill();
+    ctx.save(); ctx.beginPath(); path(SPHERE); ctx.clip();
     // land: one sharp reconstruction at a time; the next one takes over quickly halfway between them
     const ar = around(Math.min(ma, 980));
+    let landGeo = null;
     if (ar) {
       const [a, b, f] = ar, A = frame(a), B = frame(b);
       const s = ma > 980 ? Math.pow(clamp((4.0e3 - ma) / (4.0e3 - 980), 0, 1), .9) : 1;
-      const wB = smooth(.42, .58, f);
+      const wB = smooth(.42, .58, f), base = ctx.globalAlpha;
       ctx.fillStyle = L.land;
       for (const [F, w] of [[A, 1], [B, wB]]) {
         if (!F || w <= .01 || s <= .03 || (F === A && wB >= .99 && B)) continue;
-        ctx.globalAlpha = w;
-        ctx.beginPath(); path.context(ctx)(s < 1 ? shrunk(F, s) : F.geo); ctx.fill(); // one fill: the pieces of a continent never show seams
+        ctx.globalAlpha = base * w;
+        const geo = s < 1 ? shrunk(F, s) : F.geo;
+        ctx.beginPath(); path(geo); ctx.fill(); // one fill: the pieces of a continent never show seams
+        if (w >= .5) landGeo = geo;
       }
-      ctx.globalAlpha = 1;
+      ctx.globalAlpha = base;
       if (TIMES.length) { const i = TIMES.indexOf(a); [TIMES[i - 1], TIMES[i + 2]].forEach((m) => m != null && frame(m)); }
     }
-    // ice caps and Snowball Earth
-    ctx.fillStyle = "rgba(240,248,255,.88)";
-    if (L.north) { ctx.beginPath(); path.context(ctx)(d3.geoCircle().center([0, 90]).radius(L.north)()); ctx.fill(); }
-    if (L.south) { ctx.beginPath(); path.context(ctx)(d3.geoCircle().center([0, -90]).radius(L.south)()); ctx.fill(); }
+    // ice: thick sheets on the land near the poles, only a thin haze of sea ice on the ocean
+    const caps = [];
+    if (L.north) caps.push([1, L.north]);
+    if (L.south) caps.push([-1, L.south]);
+    if (caps.length) {
+      ctx.fillStyle = "rgba(235,245,255,.18)";
+      for (const [pole, r] of caps) { ctx.beginPath(); path(icecap(pole, Math.min(14, r * .5))); ctx.fill(); }
+      if (landGeo) {
+        ctx.save(); ctx.beginPath(); path(landGeo); ctx.clip();
+        ctx.fillStyle = "rgba(242,248,255,.92)";
+        for (const [pole, r] of caps) { ctx.beginPath(); path(icecap(pole, r)); ctx.fill(); }
+        ctx.restore();
+      }
+    }
     if (L.snowball > 0) { ctx.fillStyle = `rgba(236,246,255,${.9 * L.snowball})`; ctx.fillRect(0, 0, W, H); }
     if (L.hot > 0) { ctx.fillStyle = `rgba(150,70,40,${.22 * L.hot})`; ctx.fillRect(0, 0, W, H); }
-    ctx.beginPath(); path.context(ctx)(grat); ctx.strokeStyle = `rgba(255,255,255,${lerp(.07, .1, t)})`; ctx.lineWidth = .8; ctx.stroke();
-    // night side, only while it is a globe
-    if (t < 1) {
-      const sh = ctx.createRadialGradient(cx - R * .55, cy - R * .45, R * .25, cx - R * .1, cy, R * 1.35);
+    ctx.beginPath(); path(grat); ctx.strokeStyle = globe ? "rgba(255,255,255,.07)" : "rgba(255,255,255,.1)"; ctx.lineWidth = .8; ctx.stroke();
+    if (globe) { // night side
+      const sh = ctx.createRadialGradient(cx - S * .55, cy - S * .45, S * .25, cx - S * .1, cy, S * 1.35);
       sh.addColorStop(0, "rgba(0,0,0,0)"); sh.addColorStop(.7, "rgba(0,0,10,.35)"); sh.addColorStop(1, "rgba(0,0,10,.82)");
-      ctx.globalAlpha = 1 - t; ctx.fillStyle = sh; ctx.fillRect(0, 0, W, H); ctx.globalAlpha = 1;
+      ctx.fillStyle = sh; ctx.fillRect(0, 0, W, H);
     }
     ctx.restore();
-    ctx.beginPath(); path.context(ctx)(SPHERE); ctx.strokeStyle = L.air.replace("rgb", "rgba").replace(")", ",.6)"); ctx.lineWidth = 2; ctx.stroke();
-
-    const lifeShown = drawLife(ctx, view, t, [-lam, -rot[1] * (1 - t)]);
-
-    // the place of the current event
+    ctx.beginPath(); path(SPHERE); ctx.strokeStyle = L.air.replace("rgb", "rgba").replace(")", ",.6)"); ctx.lineWidth = 2; ctx.stroke();
+    const shown = drawLife(ctx, view, proj, globe, center);
     if (at) {
-      const p = projection(at), visible = t > .5 || d3.geoDistance(at, [-lam, -rot[1]]) < Math.PI / 2 - .05; // the morphing projection has no invert
+      const p = proj(at), visible = !globe || d3.geoDistance(at, center) < Math.PI / 2 - .05;
       if (p && visible) {
         const pulse = (view.t % 1.5) / 1.5;
         ctx.strokeStyle = `rgba(255,214,90,${1 - pulse})`; ctx.lineWidth = 3; ctx.beginPath(); ctx.arc(p[0], p[1], 8 + pulse * 26, 0, TAU); ctx.stroke();
         ctx.fillStyle = "#ffd65a"; ctx.strokeStyle = "#3a2a05"; ctx.lineWidth = 2; ctx.beginPath(); ctx.arc(p[0], p[1], 7, 0, TAU); ctx.fill(); ctx.stroke();
       }
     }
+    return shown;
+  }
+
+  function draw(ctx, W, H, view) {
+    const ago = view.ago, ma = ago / 1e6, L = look(ago);
+    const st = view.stage, cx = st.x + st.w / 2, cy = st.y + st.h / 2;
+    const dt = Math.min(.1, view.t - lastT || 0); lastT = view.t;
+    const t = mapness(ago), R = Math.min(st.w, st.h) * .44;
+    // the wide map sits below the date and era chips in the top-left corner
+    const top = Math.max(st.y, (document.getElementById("eras")?.getBoundingClientRect().bottom || 0) + 12), mh = st.y + st.h - top;
+    const M = Math.min((st.w - 16) / FLAT_W, mh / FLAT_H) * .97;
+
+    // the globe turns toward the place of the current event, or spins slowly
+    const at = view.focusAt;
+    if (at) { const tl = -at[0], tp = clamp(-at[1], -50, 50); let d = ((tl - rot[0] + 540) % 360) - 180; rot[0] += d * Math.min(1, dt * 2.2); rot[1] += (tp - rot[1]) * Math.min(1, dt * 2.2); }
+    else { rot[0] += dt * 8; rot[1] += (-15 - rot[1]) * Math.min(1, dt); }
+    const lam = ((rot[0] + 540) % 360) - 180, center = [-lam, -rot[1]];
+
+    ctx.fillStyle = "#02030a"; ctx.fillRect(0, 0, W, H);
+    Scenes.starfield(ctx, W, H, view.t, .8);
+    let shown = 0;
+    if (t < 1) { // globe, growing a little as it fades into the map
+      ctx.save(); ctx.globalAlpha = 1 - t;
+      Scenes.glow(ctx, cx, cy, R * 1.25, L.air.replace("rgb", "rgba").replace(")", ",.45)"));
+      globeProj.translate([cx, cy]).scale(R * (1 + t * .35)).rotate([lam, rot[1]]);
+      shown = paint(ctx, W, H, view, globeProj, true, L, at, center);
+      ctx.restore();
+    }
+    if (t > 0) { // flat map, settling into place as it fades in
+      ctx.save(); ctx.globalAlpha = t;
+      mapProj.translate([cx, top + mh / 2]).scale(M * (.85 + t * .15)).rotate([0, 0]);
+      shown = paint(ctx, W, H, view, mapProj, false, L, at, center);
+      ctx.restore();
+    }
     const items = [];
     if (L.snowball > .5) items.push(["#eef6ff", "Земята е замръзнала цялата"]);
-    else if (L.north >= 25) items.push(["#eef6ff", "ледникова епоха"]);
+    else if (L.north >= 25 || L.south >= 25) items.push(["#eef6ff", "ледникова епоха: лед по сушата близо до полюсите"]);
     if (ago > 2.4e9) items.push(["#ffb56b", "въздухът е без кислород"]);
-    if (lifeShown) items.push(["#ff8a4a", "кой е живял тогава и къде"]);
+    if (shown) items.push(["#ff8a4a", "кой е живял тогава и къде"]);
     if (ma > 980) items.push(["#a4825d", "континентите тогава — по предположение"]);
     else items.push([L.land, "суша — местата на континентите тогава"]);
     Scenes.legend(ctx, view, items);

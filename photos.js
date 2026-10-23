@@ -115,5 +115,21 @@ const PHOTOS = {
   "flight": { f: "photos/flight.jpg", a: "John T. Daniels", l: "Public domain", u: "https://commons.wikimedia.org/wiki/File:First_flight2.jpg", w: 900, h: 583 },
   "moon": { f: "photos/moon.jpg", a: "Neil Armstrong", l: "Public domain", u: "https://commons.wikimedia.org/wiki/File:Aldrin_Apollo_11_original.jpg", w: 894, h: 900 },
   "blackhole": { f: "photos/blackhole.jpg", a: "Event Horizon Telescope", l: "CC BY 4.0", u: "https://commons.wikimedia.org/wiki/File:Black_hole_-_Messier_87_crop_max_res.jpg", w: 900, h: 900 },
-  "jwst": { f: "photos/jwst.jpg", a: "NASA/MSFC/David Higginbotham", l: "Public domain", u: "https://commons.wikimedia.org/wiki/File:James_Webb_Primary_Mirror.jpg", w: 900, h: 599 }
+  "jwst": { f: "photos/jwst.jpg", a: "NASA/MSFC/David Higginbotham", l: "Public domain", u: "https://commons.wikimedia.org/wiki/File:James_Webb_Primary_Mirror.jpg", w: 900, h: 599 },
+  "burials": { f: "photos/burials.jpg", a: "LS", l: "CC BY-SA 4.0", u: "https://commons.wikimedia.org/wiki/File:Eingang_der_Qafzeh-H%C3%B6hle.jpg", w: 600, h: 900 },
+  "judaism": { f: "photos/judaism.jpg", a: "Davidbena", l: "CC BY-SA 4.0", u: "https://commons.wikimedia.org/wiki/File:Two_Torah_scrolls.jpg", w: 900, h: 675 },
+  "flood": { f: "photos/flood.jpg", a: "Osama Shukir Muhammed Amin", l: "CC BY-SA 4.0", u: "https://commons.wikimedia.org/wiki/File:Tablet_XI_or_the_Flood_Tablet_of_the_Epic_of_Gilgamesh%2C_currently_housed_in_the_British_Museum_in_London.jpg", w: 900, h: 601 },
+  "hinduism": { f: "photos/hinduism.jpg", a: "Unknown author", l: "Public domain", u: "https://commons.wikimedia.org/wiki/File:Rigveda_MS2097.jpg", w: 900, h: 864 },
+  "zoroastrianism": { f: "photos/zoroastrianism.jpg", a: "Bernard Gagnon", l: "CC BY-SA 4.0", u: "https://commons.wikimedia.org/wiki/File:Zoroastrian_Fire_Temple%2C_Yazd_01.jpg", w: 900, h: 600 },
+  "buddhism": { f: "photos/buddhism.jpg", a: "Bpilgrim", l: "CC BY-SA 2.5", u: "https://commons.wikimedia.org/wiki/File:Mahabodhitemple.jpg", w: 675, h: 900 },
+  "christianity": { f: "photos/christianity.jpg", a: "Berthold Werner", l: "CC BY-SA 3.0", u: "https://commons.wikimedia.org/wiki/File:Jerusalem_Holy_Sepulchre_BW_19.JPG", w: 900, h: 759 },
+  "islam": { f: "photos/islam.jpg", a: "Adli Wahid; edited by Basile Morin", l: "CC BY-SA 4.0", u: "https://commons.wikimedia.org/wiki/File:The_Kaaba_during_Hajj_-_edited.jpg", w: 900, h: 631 },
+  "bulgariabaptism": { f: "photos/bulgariabaptism.jpg", a: "Nikolai Pavlovich", l: "Public domain", u: "https://commons.wikimedia.org/wiki/File:Baptism_of_the_Preslav_Court.jpg", w: 560, h: 451 },
+  "schism": { f: "photos/schism.jpg", a: "Arild Vågen", l: "CC BY-SA 3.0", u: "https://commons.wikimedia.org/wiki/File:Hagia_Sophia_Mars_2013.jpg", w: 900, h: 601 },
+  "sikhism": { f: "photos/sikhism.jpg", a: "Oleg Yunakov", l: "CC BY-SA 3.0", u: "https://commons.wikimedia.org/wiki/File:Hamandir_Sahib_%28Golden_Temple%29.jpg", w: 900, h: 600 },
+  "reformation": { f: "photos/reformation.jpg", a: "Lucas Cranach the Elder", l: "Public domain", u: "https://commons.wikimedia.org/wiki/File:Lucas_Cranach_d.%C3%84._-_Martin_Luther%2C_1528_%28Veste_Coburg%29.jpg", w: 568, h: 900 },
+  "lystrosaurus": { f: "photos/lystrosaurus.jpg", a: "Jon Augier / Museums Victoria", l: "CC BY 4.0", u: "https://commons.wikimedia.org/wiki/File:Lystrosaurus_georgi_mounted_skeleton.jpg", w: 900, h: 445 },
+  "coelophysis": { f: "photos/coelophysis.jpg", a: "James St. John", l: "CC BY 2.0", u: "https://commons.wikimedia.org/wiki/File:Coelophysis_bauri_mount.jpg", w: 900, h: 463 },
+  "pteranodon": { f: "photos/pteranodon.jpg", a: "Mira Mechtley", l: "CC BY-SA 2.0", u: "https://commons.wikimedia.org/wiki/File:Pteranodon_longiceps_skeleton.jpg", w: 900, h: 600 },
+  "dodo": { f: "photos/dodo.jpg", a: "Heinz-Josef Lücking", l: "CC BY-SA 2.5", u: "https://commons.wikimedia.org/wiki/File:Dodo-Skeleton_Natural_History_Museum_London_England.jpg", w: 891, h: 900 }
 };
