@@ -55,7 +55,10 @@ function secParts(sec) {
   if (y < 1e6) { const p = y < 10 ? 1 : 10 ** (Math.floor(Math.log10(y)) - 1); return { big: num(Math.round(y / p) * p), unit: "години", rel: "след големия взрив" }; }
   return { big: num(y / 1e6, y < 1e7 ? 1 : 0), unit: "милиона години", rel: "след големия взрив" };
 }
-const timeParts = (u) => { const t = timeAt(u); return u < EARLY ? secParts(Math.max(t.sec, 1e-43)) : agoParts(t.ago); };
+// the big number always counts forward from the Big Bang; "how long ago" is the small line under it
+function sinceParts(years) { const v = years / 1e9; return { big: num(v, v >= 13.795 ? 1 : 2), unit: Math.round(v * 100) === 100 ? "милиард години" : "милиарда години", rel: "след големия взрив" }; }
+const timeParts = (u) => { const t = timeAt(u); return u < EARLY ? secParts(Math.max(t.sec, 1e-43)) : sinceParts(AGE * u); };
+function agoLine(u) { const a = agoParts(timeAt(u).ago); return a.big === "днес" ? "днес" : `преди ${a.big} ${a.unit}${a.rel.includes("·") ? " · " + a.rel.split("· ")[1] : ""}`; }
 // "от 145 до 66 милиона години преди днес" — for the teacher
 function spanWords(e) {
   if (e.fromSec != null && e.toSec != null) { const a = secParts(e.fromSec), b = secParts(e.toSec); return `от ${a.big} ${a.unit} до ${b.big} ${b.unit} след големия взрив`.replace(/10[⁻⁰-⁹]+ от секундата/g, "миг"); }
@@ -144,7 +147,7 @@ function speedWords(v) {
 // the same moment written out with every digit, so the size of the number is visible
 function fullWords(u) {
   const t = timeAt(u);
-  if (u >= EARLY) return t.ago < 1.5 ? "" : `${num(Math.round(t.ago))} години`;
+  if (u >= EARLY) return `${num(Math.round(AGE * u))} години`;
   const sec = Math.max(t.sec, 1e-43);
   if (sec < 1) { const e = -Math.floor(Math.log10(sec)); return `0,${"0".repeat(Math.max(0, e - 1))}1 от секундата`; }
   if (sec < YEAR) return `${num(Math.round(sec))} секунди`;
@@ -152,9 +155,12 @@ function fullWords(u) {
 }
 function updateHUD() {
   const moving = !!tween || dragging, p = timeParts(state.u), full = fullWords(state.u);
-  const fast = moving && speed > 50 ? `<small class="speed"><svg viewBox="0 0 24 24" width="1em" height="1em" fill="currentColor"><path d="M3 5v14l9-7zM12 5v14l9-7z"/></svg>${esc(speedWords(speed))}</small>` : "";
+  // the speed floats in its own overlay at the top centre, so the date never jumps around
+  const sp = $("speed"), fast = moving && speed > 50;
+  sp.classList.toggle("show", fast);
+  if (fast) sp.lastChild.textContent = speedWords(speed);
   $("when").classList.toggle("moving", moving);
-  $("when").innerHTML = `${full ? `<em class="full">${esc(full)}</em>` : ""}<b>${esc(p.big)}</b>${p.unit ? `<span>${esc(p.unit)}</span>` : ""}${p.rel ? `<small>${esc(p.rel)}</small>` : ""}${fast}`;
+  $("when").innerHTML = `${full ? `<em class="full">${esc(full)}</em>` : ""}<b>${esc(p.big)}</b>${p.unit ? `<span>${esc(p.unit)}</span>` : ""}<small>${esc(p.rel)} · <span class="ago">${esc(moving && state.u >= EARLY && timeAt(state.u).ago >= 1.5 ? `преди ${num(Math.round(timeAt(state.u).ago))} години` : agoLine(state.u))}</span></small>`;
   const chips = [eraAt(state.u, 1), eraAt(state.u, 2), eraAt(state.u, 4) || eraAt(state.u, 3)].filter(Boolean);
   $("eras").innerHTML = chips.map((e) => `<span><i style="background:${e.c}"></i>${esc(e.n)}</span>`).join("");
 }
@@ -170,9 +176,9 @@ function setPhoto(p, kind) {
   ph.querySelector(".cr")?.remove();
   const put = (node) => {
     if (token !== photoToken) return;
-    const olds = [...ph.children]; ph.appendChild(node);
+    // the old picture goes away at once and the new one fades in on its own: two pictures never overlap
+    ph.replaceChildren(node);
     if (p) ph.insertAdjacentHTML("beforeend", `<div class="cr">Снимка: <a href="${p.u}" target="_blank" rel="noopener">${esc(p.a)}</a>, ${esc(p.l)}</div>`);
-    setTimeout(() => olds.forEach((o) => o.remove()), 650);
   };
   if (p) { const im = new Image(); im.alt = ""; im.src = p.f; (im.decode ? im.decode() : Promise.resolve()).catch(() => {}).then(() => put(im)); }
   else { const d = document.createElement("div"); d.className = "noimg"; d.innerHTML = icon(kind); put(d); }
@@ -205,11 +211,18 @@ function tickLabel(ago) {
   if (ago >= 1e4) return num(ago);
   return num(ago) + " г.";
 }
+function sinceLabel(y) { return y <= 0 ? "взрив" : y >= 1e9 ? num(y / 1e9, 2) + " млрд." : y >= 1e6 ? num(y / 1e6, 2) + " млн." : num(y) + " г."; }
 function ticksInView() {
   const W = track.clientWidth, agoA = AGE * (1 - view.a), agoB = AGE * (1 - view.b), span = agoA - agoB, out = [];
   const raw = span / Math.max(3, Math.floor(W / 110)), p10 = 10 ** Math.floor(Math.log10(raw)), step = [1, 2, 5, 10].map((m) => m * p10).find((v) => v >= raw);
-  for (let ago = Math.floor(agoA / step) * step; ago >= agoB - 1e-6; ago -= step) if (ago <= AGE - 1) out.push({ u: uAgo(ago), l: tickLabel(ago) });
-  if (view.a === 0) out.unshift({ u: 0, l: "взрив" });
+  if (span >= 5e8) { // zoomed out: years since the Big Bang, growing to the right like the counter
+    const yA = AGE * view.a, yB = AGE * view.b;
+    for (let y = Math.ceil(yA / step) * step; y <= yB + 1e-6; y += step) out.push({ u: y / AGE, l: y >= AGE - 1 ? "днес" : sinceLabel(y) });
+    if (view.b === 1) out.unshift({ u: 1, l: "днес" }); // listed first so it wins over a crowded neighbour
+    return out;
+  }
+  // zoomed into recent times: the years since the Big Bang all look alike, so count back from today
+  for (let ago = Math.floor(agoA / step) * step; ago >= agoB - 1e-6; ago -= step) if (ago <= AGE - 1) out.push({ u: uAgo(ago), l: ago <= 0 ? "днес" : "преди " + tickLabel(ago) });
   return out;
 }
 function buildTimeline() {

@@ -17,7 +17,8 @@ const Globe = (() => {
   function toGeo(rings, shrink = 1) {
     const polys = [];
     for (const flat of rings) {
-      let ring = []; for (let i = 0; i < flat.length; i += 2) ring.push([flat[i], flat[i + 1]]);
+      // points exactly on a pole or on the date line make d3 fill the whole map instead of the land
+      let ring = []; for (let i = 0; i < flat.length; i += 2) ring.push([clamp(flat[i], -179.99, 179.99), clamp(flat[i + 1], -89.99, 89.99)]);
       if (shrink < 1) {
         let cx = 0, cy = 0; ring.forEach(([x, y]) => { cx += x; cy += y; }); cx /= ring.length; cy /= ring.length;
         ring = ring.map(([x, y]) => [cx + (x - cx) * shrink, cy + (y - cy) * shrink]);
@@ -96,43 +97,50 @@ const Globe = (() => {
   }
   function drawLife(ctx, view, proj, globe, center) {
     if (typeof LIFE === "undefined" || typeof LIFE_PATHS === "undefined") return 0;
-    const ago = view.ago, ma = ago / 1e6, R = clamp(Math.min(view.stage.w, view.stage.h) / 44, 11, 17), boxes = [];
-    let shown = 0;
-    ctx.save(); ctx.font = "800 12px Nunito, system-ui, sans-serif"; ctx.textBaseline = "middle";
+    const ago = view.ago, ma = ago / 1e6, R = clamp(Math.min(view.stage.w, view.stage.h) / 36, 13, 19);
+    // 1) everything alive now, at the place its find site had then
+    const items = [];
     for (const c of LIFE) {
       if (ago > c.from || ago < c.to) continue;
       const paths = LIFE_PATHS[c.id]; if (!paths) continue;
-      let labelled = false;
       c.sites.forEach((site, k) => {
         const end = site[2] != null ? site[2] : c.to;
         if (ago < end || !paths[k]) return;
         const ll = lifeAt(paths[k], ma);
         if (globe && d3.geoDistance(ll, center) > Math.PI / 2 - .08) return;
         const p = proj(ll); if (!p) return;
-        // fade in when the animal appears and out when it disappears (on the log clock)
-        const fade = clamp(Math.min(Math.log10(c.from / Math.max(ago, 1)), end > 0 ? Math.log10(ago / end) : 9) * 10, 0, 1);
-        if (fade <= .02) return;
-        ctx.globalAlpha = fade; shown++;
-        const col = LIFE_COL[c.kind] || "#fff", ph = c.ph && typeof PHOTOS !== "undefined" && PHOTOS[c.ph];
-        ctx.fillStyle = "rgba(5,8,30,.75)"; ctx.beginPath(); ctx.arc(p[0], p[1], R + 2.5, 0, TAU); ctx.fill();
-        const im = ph && image(ph.f);
-        if (im && im.complete && im.naturalWidth) {
-          ctx.save(); ctx.beginPath(); ctx.arc(p[0], p[1], R, 0, TAU); ctx.clip();
-          const k2 = Math.max(2 * R / im.naturalWidth, 2 * R / im.naturalHeight);
-          ctx.drawImage(im, p[0] - im.naturalWidth * k2 / 2, p[1] - im.naturalHeight * k2 / 2, im.naturalWidth * k2, im.naturalHeight * k2);
-          ctx.restore();
-        } else { ctx.fillStyle = col; ctx.beginPath(); ctx.arc(p[0], p[1], R * .55, 0, TAU); ctx.fill(); }
-        ctx.strokeStyle = col; ctx.lineWidth = 2.5; ctx.beginPath(); ctx.arc(p[0], p[1], R + 1, 0, TAU); ctx.stroke();
-        if (labelled) return;
-        const w = ctx.measureText(c.n).width + 14, bx = p[0] + R + 4, by = p[1] - 10, box = [bx, by, w, 20];
-        if (boxes.some((b) => bx < b[0] + b[2] && bx + w > b[0] && by < b[1] + b[3] && by + 20 > b[1])) return;
-        boxes.push(box); labelled = true;
-        ctx.fillStyle = "rgba(5,8,30,.72)"; ctx.beginPath(); ctx.roundRect ? ctx.roundRect(bx, by, w, 20, 10) : ctx.rect(bx, by, w, 20); ctx.fill();
-        ctx.fillStyle = col; ctx.fillText(c.n, bx + 7, p[1]);
+        // fade in and out only at the very start and end of its time on Earth
+        const life = c.from - end, pos = life > 0 ? (c.from - ago) / life : .5;
+        const fade = clamp(Math.min(pos / .08, end > 0 ? (1 - pos) / .08 : 1, 1), 0, 1);
+        if (fade > .02) items.push({ c, p, x: p[0], y: p[1], fade, first: !items.some((q) => q.c === c) });
       });
     }
+    // 2) icons that would cover each other step aside around the spot, with a thin line back to it
+    const gap = 2 * R + 6;
+    items.forEach((it, i) => {
+      for (let k = 0; k < 24 && items.slice(0, i).some((q) => Math.hypot(q.x - it.x, q.y - it.y) < gap); k++) {
+        const a = k * 2.4, d = gap * (1 + Math.floor(k / 6) * .9); it.x = it.p[0] + Math.cos(a) * d; it.y = it.p[1] + Math.sin(a) * d;
+      }
+    });
+    ctx.save(); ctx.font = "800 12px Nunito, system-ui, sans-serif"; ctx.textBaseline = "middle";
+    const boxes = [];
+    for (const it of items) {
+      const { c, x, y } = it, col = LIFE_COL[c.kind] || "#fff";
+      ctx.globalAlpha = it.fade;
+      if (x !== it.p[0] || y !== it.p[1]) { ctx.strokeStyle = col; ctx.lineWidth = 1.5; ctx.beginPath(); ctx.moveTo(it.p[0], it.p[1]); ctx.lineTo(x, y); ctx.stroke(); ctx.fillStyle = col; ctx.beginPath(); ctx.arc(it.p[0], it.p[1], 3, 0, TAU); ctx.fill(); }
+      // a light round badge so the coloured icon stands out, ringed in the colour of its group
+      ctx.fillStyle = "rgba(255,251,240,.95)"; ctx.beginPath(); ctx.arc(x, y, R + 1, 0, TAU); ctx.fill();
+      ctx.strokeStyle = col; ctx.lineWidth = 3; ctx.stroke();
+      if (c.e) { ctx.save(); ctx.font = `${Math.round(R * 1.2)}px "Apple Color Emoji","Segoe UI Emoji","Noto Color Emoji",sans-serif`; ctx.textAlign = "center"; ctx.textBaseline = "middle"; ctx.fillText(c.e, x, y + 1); ctx.restore(); }
+      if (!it.first) continue;
+      const w = ctx.measureText(c.n).width + 14, bx = x + R + 5, by = y - 10;
+      if (boxes.some((b) => bx < b[0] + b[2] && bx + w > b[0] && by < b[1] + b[3] && by + 20 > b[1])) continue;
+      boxes.push([bx, by, w, 20]);
+      ctx.fillStyle = "rgba(5,8,30,.75)"; ctx.beginPath(); ctx.roundRect ? ctx.roundRect(bx, by, w, 20, 10) : ctx.rect(bx, by, w, 20); ctx.fill();
+      ctx.fillStyle = col; ctx.fillText(c.n, bx + 7, y);
+    }
     ctx.restore();
-    return shown;
+    return items.length;
   }
 
   // an ice cap with a wavy edge, r degrees from the pole (pole = 1 north, -1 south)
@@ -162,16 +170,12 @@ const Globe = (() => {
     if (ar) {
       const [a, b, f] = ar, A = frame(a), B = frame(b);
       const s = ma > 980 ? Math.pow(clamp((4.0e3 - ma) / (4.0e3 - 980), 0, 1), .9) : 1;
-      const wB = smooth(.42, .58, f), base = ctx.globalAlpha;
-      ctx.fillStyle = L.land;
-      for (const [F, w] of [[A, 1], [B, wB]]) {
-        if (!F || w <= .01 || s <= .03 || (F === A && wB >= .99 && B)) continue;
-        ctx.globalAlpha = base * w;
-        const geo = s < 1 ? shrunk(F, s) : F.geo;
-        ctx.beginPath(); path(geo); ctx.fill(); // one fill: the pieces of a continent never show seams
-        if (w >= .5) landGeo = geo;
+      // only the nearest reconstruction is drawn: two sets of continents must never show at once
+      const F = (f < .5 ? A : B) || A || B;
+      if (F && s > .03) {
+        landGeo = s < 1 ? shrunk(F, s) : F.geo;
+        ctx.fillStyle = L.land; ctx.beginPath(); path(landGeo); ctx.fill(); // one fill: the pieces of a continent never show seams
       }
-      ctx.globalAlpha = base;
       if (TIMES.length) { const i = TIMES.indexOf(a); [TIMES[i - 1], TIMES[i + 2]].forEach((m) => m != null && frame(m)); }
     }
     // ice: thick sheets on the land near the poles, only a thin haze of sea ice on the ocean
@@ -228,15 +232,18 @@ const Globe = (() => {
     ctx.fillStyle = "#02030a"; ctx.fillRect(0, 0, W, H);
     Scenes.starfield(ctx, W, H, view.t, .8);
     let shown = 0;
-    if (t < 1) { // globe, growing a little as it fades into the map
-      ctx.save(); ctx.globalAlpha = 1 - t;
+    // first the globe fades out completely, only then the map fades in: never both at once
+    // one of the two is always on screen: the globe dims, then the map takes its place and brightens
+    const gA = t < .5 ? 1 - .7 * smooth(.15, .5, t) : 0, mA = t >= .5 ? .3 + .7 * smooth(.5, .85, t) : 0;
+    if (gA > 0) { // globe, growing a little as it goes
+      ctx.save(); ctx.globalAlpha = gA;
       Scenes.glow(ctx, cx, cy, R * 1.25, L.air.replace("rgb", "rgba").replace(")", ",.45)"));
       globeProj.translate([cx, cy]).scale(R * (1 + t * .35)).rotate([lam, rot[1]]);
       shown = paint(ctx, W, H, view, globeProj, true, L, at, center);
       ctx.restore();
     }
-    if (t > 0) { // flat map, settling into place as it fades in
-      ctx.save(); ctx.globalAlpha = t;
+    if (mA > 0) { // flat map, settling into place as it comes
+      ctx.save(); ctx.globalAlpha = mA;
       mapProj.translate([cx, top + mh / 2]).scale(M * (.85 + t * .15)).rotate([0, 0]);
       shown = paint(ctx, W, H, view, mapProj, false, L, at, center);
       ctx.restore();
