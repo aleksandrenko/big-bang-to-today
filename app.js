@@ -29,6 +29,7 @@ const KIND = {
   earth: { n: "Земята", c: "#4fb0ff", i: '<circle cx="12" cy="12" r="9" fill="none" stroke="currentColor" stroke-width="2.2"/><path d="M5 9c3 1 4-2 7-1s2 4 5 3M7 17c2-2 5-1 6-3" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round"/>' },
   life: { n: "Живот", c: "#5fd37a", i: '<path d="M5 19C5 10 11 5 20 4c-1 9-6 15-15 15z" fill="currentColor"/><path d="M5 19l8-8" stroke="#0a0e2c" stroke-width="2" stroke-linecap="round"/>' },
   dino: { n: "Динозаври", c: "#ff8a4a", i: '<path d="M3 18c3 0 4-5 8-5 2 0 3-4 6-6 1-1 4-1 4 1 0 1-2 1-2 2v4c0 3-3 5-7 5H8l-1 2H5l1-2c-2 0-3-1-3-1z" fill="currentColor"/>' },
+  faith: { n: "Вяра", c: "#e7a6ff", i: '<path d="M12 2c2 3 5 5 5 9a5 5 0 0 1-10 0c0-2 1-3 2-4 0 2 1 3 2 3 0-3-1-5 1-8z" fill="currentColor"/><rect x="8" y="17" width="8" height="5" rx="1.5" fill="currentColor"/>' },
   human: { n: "Хора", c: "#ffd25a", i: '<circle cx="12" cy="6" r="3.2" fill="currentColor"/><path d="M6 21c0-6 2.5-9 6-9s6 3 6 9z" fill="currentColor"/>' },
 };
 const icon = (k) => `<svg viewBox="0 0 24 24" width="1em" height="1em" style="color:${KIND[k].c}">${KIND[k].i}</svg>`;
